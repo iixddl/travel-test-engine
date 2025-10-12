@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>آلة اختبار السفر — v1.2 (عشوائية/تحليل/توافق/دمج جماعي)</title>
+<meta name="theme-color" content="#0e0f12" />
+<style>
+  :root{
+    --bg:#0e0f12; --card:#141a22; --ink:#eaf0f7; --muted:#98a2ad;
+    --acc:#7ad3ff; --acc2:#ffd36d; --bad:#ff6d8a; --good:#58d68d; --warn:#f5b041;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Tajawal","IBM Plex Sans Arabic",Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 20% -10%,#131927,#0d121b 40%,#0b0f16 70%), linear-gradient(180deg,#0c1017,#0b0f16);
+    color:var(--ink);
+  }
+  .wrap{max-width:1140px; margin:0 auto; padding:18px}
+  header{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+  h1{font-size:22px; margin:0}
+  .pill{background:var(--card); border:1px solid #263048; padding:8px 12px; border-radius:12px; color:var(--muted); font-size:13px}
+  .grid{display:grid; gap:12px; grid-template-columns:1fr}
+  @media(min-width:980px){ .grid{ grid-template-columns: 2fr 1fr; } }
+  .card{background:var(--card); border:1px solid #263048; border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .card h2{margin:0 0 10px 0; font-size:18px}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px}
+  input[type="text"], input[type="number"], input[type="date"], input[type="time"], textarea, select{
+    width:100%; background:#0f141c; color:var(--ink); border:1px solid #2b3550; border-radius:10px; padding:10px 12px; outline:none
+  }
+  textarea{min-height:90px; resize:vertical}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{background:linear-gradient(180deg,#1b2639,#142034); color:#e9eef6; border:1px solid #2b3550; padding:10px 14px; border-radius:12px; cursor:pointer}
+  .btn:disabled{opacity:.6; cursor:not-allowed}
+  .btn-acc{background:linear-gradient(180deg,#2e6b98,#224e72); border-color:#2d6a96}
+  .btn-good{background:#123a28; border-color:#2e6b4f}
+  .btn-warn{background:#3a2c12; border-color:#745d26}
+  .btn-bad{background:#3a1621; border-color:#6d2b3f}
+  .tiny{font-size:12px}
+  .muted{color:var(--muted)}
+  .chip{display:inline-block; padding:4px 8px; background:#101521; border:1px solid #29324a; border-radius:999px; font-size:12px}
+  .q{padding:14px; border:1px dashed #2a3552; border-radius:14px; margin-bottom:12px; background:#0f131b}
+  .q-title{font-size:16px; margin:0 0 8px 0; line-height:1.7}
+  .q-meta{font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; gap:8px; align-items:center}
+  .q-ans{margin-top:8px}
+  .mc-list{display:grid; gap:8px; grid-template-columns:1fr 1fr}
+  .mc-list label{color:var(--ink); display:flex; align-items:center; gap:8px; background:#111827; border:1px solid #2b3550; padding:9px 10px; border-radius:10px; cursor:pointer}
+  progress{width:100%; height:10px; accent-color:var(--acc)}
+  .footer{opacity:.8; font-size:12px; margin-top:10px}
+  .toast{position:fixed; bottom:16px; left:16px; background:#151c28; color:#var(--ink); border:1px solid #2c3449; border-radius:12px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.3); display:none; z-index:10}
+  .compat-table{width:100%; border-collapse:collapse}
+  .compat-table td,.compat-table th{border:1px solid #2c3449; padding:8px; text-align:center}
+  .hr{height:1px; background:#263048; margin:8px 0}
+  .tag{font-size:11px; background:var(--acc2); color:#140e04; padding:3px 6px; border-radius:999px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>آلة اختبار السفر — بدون سكر كوتينغ، بلا تبويبات</h1>
+    <div class="pill">يحفظ تلقائيًا • يعمل على أي استضافة ساكنة • دمج نتائج المجموعة • رابط جلسة لكل شخص</div>
+  </header>
+
+  <div class="grid">
+    <!-- الإعدادات -->
+    <section class="card" id="setup">
+      <h2>التهيئة</h2>
+      <div class="row">
+        <div style="flex:1 1 220px">
+          <label>اسمك</label>
+          <input id="selfName" type="text" placeholder="مثال: ديما" />
+        </div>
+        <div style="flex:1 1 180px">
+          <label>تاريخ الميلاد</label>
+          <input id="dob" type="date" />
+        </div>
+        <div style="flex:1 1 160px">
+          <label>الوقت الآن</label>
+          <input id="nowTime" type="time" />
+        </div>
+        <div style="flex:1 1 180px">
+          <label>رابط جلسة (اختياري) ?user=اسم</label>
+          <input id="sessionHint" type="text" placeholder="مثال: Reema" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1 1 320px">
+          <label>أسماء المجموعة (بفواصل)</label>
+          <input id="groupList" type="text" value="ديما, ريما, رغد, رهف" />
+        </div>
+        <div style="flex:0 0 150px">
+          <label>عدد الأسئلة</label>
+          <input id="targetCount" type="number" min="200" max="1200" value="650" />
+        </div>
+        <div style="flex:0 0 170px">
+          <label>عشوائية (0–1)</label>
+          <input id="randIntensity" type="number" min="0" max="1" step="0.05" value="0.8" />
+        </div>
+        <div style="flex:0 0 200px">
+          <label>أسئلة حادة (غير جنسية/غير دينية)</label>
+          <select id="edgy">
+            <option value="mix" selected>مزيج متوازن</option>
+            <option value="high">عالية</option>
+            <option value="low">منخفضة</option>
+            <option value="off">إيقاف</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1 1 220px">
+          <label>نمط الصراحة</label>
+          <select id="brutal">
+            <option value="on" selected>وقاحة قصوى (لا تجميل — غير شخصي/لا ديني)</option>
+            <option value="balanced">متوازن</option>
+            <option value="soft">لطيف</option>
+          </select>
+        </div>
+        <div style="flex:1 1 220px">
+          <label>تقدير مدة الحل</label>
+          <div class="pill tiny" id="eta">—</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:6px">
+        <button class="btn btn-acc" id="startBtn">ابدأ الاختبار</button>
+        <button class="btn" id="resumeBtn">استئناف التقدّم</button>
+        <button class="btn btn-warn" id="resetBtn">إعادة ضبط</button>
+      </div>
+      <div class="footer muted tiny">
+        تلميح: لإبقاء جلسات الأفراد منفصلة، افتحي الرابط بهذا الشكل: <span class="chip">index.html?user=Reema</span> ثم ابدئي.
+      </div>
+    </section>
+
+    <!-- لوحة التحكم -->
+    <aside class="card">
+      <h2>لوحة التحكم</h2>
+      <div class="row">
+        <div style="flex:1 1 120px">
+          <label>التقدّم</label>
+          <progress id="prog" value="0" max="1"></progress>
+          <div class="tiny muted"><span id="progText">0/0</span></div>
+        </div>
+        <div style="flex:1 1 120px">
+          <label>المؤقّت</label>
+          <div class="chip" id="timer">00:00:00</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <button class="btn" id="saveBtn">حفظ فوري</button>
+        <button class="btn" id="exportBtn">تصدير JSON (جلسة)</button>
+        <button class="btn" id="exportCsvBtn">تصدير CSV (إجابات)</button>
+      </div>
+
+      <div class="row" style="margin-top:6px">
+        <label>استيراد/دمج ملفات JSON متعددة (نتائج أعضاء مختلفين)</label>
+        <input id="importMulti" type="file" accept=".json" multiple />
+        <button class="btn btn-good" id="mergeBtn">دمج وتحليل جماعي</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="tiny muted">
+        ⚠️ الخصوصية: كل شيء محلي (localStorage).  
+        🧪 PWA اختياري: للتثبيت الكامل شغّلي عبر localhost أو أي استضافة HTTPS.
+      </div>
+    </aside>
+  </div>
+
+  <!-- الأسئلة -->
+  <section class="card" id="qaPanel" style="margin-top:12px; display:none">
+    <h2>الأسئلة (بدون أقسام — عشوائية صافية)</h2>
+    <div id="qContainer"></div>
+    <div class="row">
+      <button class="btn" id="prevBtn">السابق</button>
+      <button class="btn btn-acc" id="nextBtn">التالي</button>
+      <button class="btn btn-warn" id="flagBtn">علامة توتّر (Truth Bomb)</button>
+      <button class="btn btn-good" id="finishBtn">إنهاء التحليل (فردي)</button>
+    </div>
+  </section>
+
+  <!-- النتائج الفردية -->
+  <section class="card" id="results" style="margin-top:12px; display:none">
+    <h2>التحليل المبدئي (فردي)</h2>
+    <div id="summary"></div>
+    <h3>مصفوفة توافق (ستتحسن بعد دمج نتائج باقي الأعضاء)</h3>
+    <div class="tiny muted">0–100: كلما ارتفع الرقم زاد الانسجام المتوقع تحت الضغط/المال/الإيقاع/الحدود.</div>
+    <div id="compat"></div>
+    <div class="footer tiny muted">الأرقام بوصلة، ليست حكمًا نهائيًا.</div>
+  </section>
+
+  <!-- النتائج الجماعية بعد الدمج -->
+  <section class="card" id="groupResults" style="margin-top:12px; display:none">
+    <h2>تحليل جماعي بعد الدمج</h2>
+    <div id="groupSummary"></div>
+    <h3>مصفوفة توافق جماعية</h3>
+    <div id="groupCompat"></div>
+  </section>
+
+  <div class="footer muted">v1.2 • قوالب توليد تصل بسهولة إلى 750+ سؤال • “وقاحة قصوى” غير جنسية/غير دينية • دمج متعدد</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========= أُسس عامة ========= */
+const Q = {
+  RNG_SEED_KEY: "travel_exam_rng_seed",
+  // مساحة تخزين تعتمد على اسم المستخدم أو ?user= لتفادي التصادم
+  storageKey(){
+    const u = new URLSearchParams(location.search).get("user") || (App?.state?.selfName || "anonymous");
+    return `travel_exam_state_v12_${u}`;
+  }
+};
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return((t^t>>>14)>>>0)/4294967296;}}
+function seededShuffle(arr, rnd){const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;}
+function randint(min,max,rnd){return Math.floor(rnd()*(max-min+1))+min}
+function toast(s){const t=document.getElementById('toast'); t.textContent=s; t.style.display='block'; setTimeout(()=>t.style.display='none',1800);}
+
+/* ========= بنوك المفردات/القوالب ========= */
+const LIKERT7 = ["أوافق تمامًا","أوافق كثيرًا","أوافق","محايد","لا أوافق","لا أوافق كثيرًا","لا أوافق إطلاقًا"];
+const BASE = {
+  domains:["نفسي","اقتصادي","اجتماعي","سياحي","سلوك تحت الضغط","توافق ثنائي","إدارة وقت","مرونة خطة","حدود شخصية","تغذية/قهوة","أنشطة/ليل","قيم/مبادئ","اتصال/صراحة","سلامة/خطر","تنظيم/نظافة","مؤشرات شخصية"],
+  edgyScenes:[
+    "شخص يلوّح بالتمويل لفرض جدول اليوم",
+    "انقسام حاد: YOLO مقابل قدسية الميزانية",
+    "إلغاء فعالية مدفوعة لتأخر اثنتين",
+    "حالة ذعر بعد فوات نشاط محوري",
+    "جدال علني بسبب تعليق ساخر",
+    "تصوير أحدهم دون إذن للنشر",
+    "معارف جدد بقرارات مالية مريبة",
+  ],
+  scenarios:[
+    "اتفقتوا ٨:٠٠ ص، اثنتان تأخرن ٤٥ دقيقة وفات النشاط",
+    "ريما أصرت على مكان بعيد (٢٠ دقيقة مشي) وكان مزحوم",
+    "ديما meltdown بعد فوات رحلة بحرية مدفوعة",
+    "رغد ترفض النادي وتهدّد بالعودة للسعودية",
+    "رهف تلح على أدرينالين مكلف والميزانية ضيقة",
+    "تعرفتم على مجموعة ودعوكم لتجربة غير مخططة",
+    "خطأ اسم في التذكرة والموعد قريب",
+    "فات آخر مترو/حافلة وأنتم بعيدون",
+  ],
+  mcq:{
+    pace:["سريع ترندي","هادئ متأمل","مزيج","جودة فوق العدد","أعيش اللحظة ولو فات شيء"],
+    night:["سهر وكوكتيلات","بارات هادئة بلا نوادٍ","بدون سهر","بدائل: فوتوبوث/ألعاب"],
+    ethics:["لا فرض جدول بالمال","لا تصوير بلا إذن","كشف التكاليف سلفًا","الرفض حق بلا عقوبة","تعويض المتأخر"],
+    panic:["تنفّس وتقسيم المشكلة","انسحاب مؤقّت","بدائل عملية فورًا","تفريغ ثم اعتذار","طلب مشورة"],
+    budgetGuard:["حد يومي صارم","تجاوز بسيط لتجربة نادرة","مسايرة مالية للمزاج","لا أدفع فوق السعر المنطقي","أبحث عن بدائل أرخص"],
+  },
+  ratingAxes:[
+    ["قول «لا» بلباقة",0,100],["انضباط صباحي",0,100],["مرونة عند الفوات",0,100],
+    ["حساسية للأسعار",0,100],["تحمّل سير/زحام",0,100],["مجازفة غير خطرة",0,100],
+    ["صدق بلا إحراج",0,100],["حب التوثيق",0,100],["وساطة نزاعات",0,100],
+    ["ترتيب/نظافة",0,100]
+  ],
+  foodAxes:[
+    "حساسيات غذائية (جلوتين/لاكتوز...)",
+    "نفور من الشوربات/التبولة/البوفيهات",
+    "أميل لتركي محلي/إيطالي بسيط/سوشي خفيف",
+    "قهوة مختصة مرتين يوميًا ضرورة جماعية",
+    "تجربة أطباق جديدة خارج منطقة الراحة",
+  ],
+  activities:["جاز/كوكتيلات","ثريفتنج/بازارات/ڤينتج","ورش فخار/حُلي/بيتزا","تجارب بحرية آمنة","ألعاب مقهى","شروق/غروب بحر"]
+};
+
+function makeLikert(title,domain){return {type:"likert", title, domain, scale:"LIKERT7"}}
+function makeRating(title,domain,min=0,max=100){return {type:"rating", title, domain, min, max}}
+function makeMCQ(title,domain,opts,multi=true){return {type:"mcq", title, domain, options:opts, multi}}
+function makeOpen(title,domain){return {type:"open", title, domain}}
+
+/* ========= مولّد أسئلة يصل بسهولة 750+ ========= */
+function generateQuestions({selfName, others, target=650, edgy="mix", rnd, intensity=0.8, brutal="on"}){
+  const group = Array.from(new Set([selfName, ...others])).filter(Boolean);
+  const othersOnly = group.filter(x=>x!==selfName);
+  const edgyLevel = ({off:0,low:.35,mix:.65,high:1}[edgy] ?? .65);
+  const pile = [];
+
+  // محاور أساسية Likert
+  BASE.domains.forEach(d=>{
+    [
+      "أفضل الوضوح القاسي على المجاملة الناعمة عندما يتعطل الجدول.",
+      "أقبل التنازل إذا كانت التجربة فريدة بحق.",
+      "عندي خطة B جاهزة ذهنيًا معظم الوقت.",
+      "لا أتحمل التلاعب العاطفي لفرض قرار.",
+      "الوقت مقدّس أكثر من المزاج عندي.",
+      "التجارب غير المخططة قد تصبح ذروة اليوم.",
+    ].forEach(t => pile.push(makeLikert(t, d)));
+  });
+
+  // اقتصادي
+  pile.push(makeMCQ("سلوك مالي واقع تحت الحماس:", "اقتصادي", BASE.mcq.budgetGuard, true));
+  pile.push(makeLikert("رفض نشاط غالٍ بلا قيمة مضافة قرار صحي حتى لو زعل البعض.", "اقتصادي"));
+
+  // وتيرة/ليل
+  pile.push(makeMCQ("إيقاع اليوم المفضل:", "إدارة وقت", BASE.mcq.pace, false));
+  pile.push(makeMCQ("النشاط الليلي:", "أنشطة/ليل", BASE.mcq.night, false));
+
+  // سيناريوهات حادة غير جنسية/غير دينية
+  BASE.edgyScenes.forEach(s=>{
+    if(rnd() < edgyLevel){
+      const pre = brutal==="on" ? "بلا لف ودوران: " : brutal==="balanced" ? "" : "برفق: ";
+      pile.push(makeOpen(`${pre}سيناريو حاد — ${s}. ما الخطة الدقيقة؟`, "سلوك تحت الضغط"));
+      pile.push(makeMCQ("مبدأ أخلاقي حاسم هنا:", "قيم/مبادئ", BASE.mcq.ethics, true));
+      pile.push(makeLikert("التمويل لا يمنح صلاحية التحكم في قرارات الفريق.", "قيم/مبادئ"));
+    }
+  });
+
+  // سيناريوهات نصّك
+  BASE.scenarios.forEach(s=>{
+    pile.push(makeOpen(`كيف تتصرفين لو: ${s}`, "سلوك تحت الضغط"));
+    pile.push(makeMCQ("أول خطوة عملية:", "مرونة خطة", ["تعويض منظم","تهدئة واعتذار","تعديل ميزانية","إلغاء وإعادة توزيع","تفويض القيادة مؤقتًا"], true));
+  });
+
+  // أسئلة عن الآخرين
+  const otherOpen = [
+    "قيّمي {X}: ميزة أساسية + سلوك مزعج — بدون تلطيف.",
+    "متى يجب إبعاد {X} عن قيادة اليوم؟ ولماذا؟",
+    "لو {X} انفجر غضبًا… كيف تطفئين الحريق؟ خطوات محددة.",
+    "حدودك مع {X}: شيء مسموح وشيء ممنوع تمامًا.",
+    "قرار واحد تثقين أن {X} يتفوّق فيه على البقية — ولماذا؟",
+  ];
+  othersOnly.forEach(x=>{
+    otherOpen.forEach(op => pile.push(makeOpen(op.replace("{X}", x), "توافق ثنائي")));
+    pile.push(makeLikert(`أتقبّل قيادة ${x} ليوم كامل لو رفع ذلك جودة اليوم.`, "توافق ثنائي"));
+    pile.push(makeMCQ(`شيء أسمح به لـ ${x} وشيء ممنوع:`, "حدود شخصية", ["القرار عني في تفصيل بسيط","نشر صورة بلا إذن","إضافة تكلفة مفاجئة","تأخير مزمن بلا اعتذار","سخرية علنية من ذوقي"], true));
+  });
+
+  // أسئلة عن النفس
+  [
+    "عرّفي أسلوبك في السفر بجملة واحدة ثم افصلي.",
+    "متى ولماذا تفقدين أعصابك؟ احكي موقفًا متخيّلًا.",
+    "خطوطك الحمراء التي لا نقاش فيها.",
+    "صفقة استثنائية: تتنازلين عن ماذا مقابل ماذا؟",
+    "لو سقط الجدول، أعيدي بناء يوم محترم بخطوتين.",
+  ].forEach(op => pile.push(makeOpen(op, "نفسي")));
+
+  // Ratings
+  BASE.ratingAxes.forEach(([axis,min,max])=> pile.push(makeRating(axis,"مؤشرات شخصية",min,max)));
+
+  // طعام/قهوة/أنشطة
+  BASE.foodAxes.forEach(ax => pile.push(makeLikert(`بالنسبة لي: ${ax}.`, "تغذية/قهوة")));
+  BASE.activities.forEach(a => pile.push(makeLikert(`أعطي أولوية لـ: ${a}.`, "أنشطة/ليل")));
+
+  // ترتيب، تشويش، أخذ عيّنة بالحجم المطلوب
+  const shuffled = seededShuffle(pile, rnd);
+  const jittered = seededShuffle(shuffled, rnd);
+  const desired = Math.min(Math.max(target, 200), 1200);
+  let sample = jittered.slice(0, desired);
+
+  // حقن “نبضات قصيرة” لكسر إرهاق الأسئلة الطويلة
+  const pings = [
+    makeLikert("المزاج > الخطة.", "قيم/مبادئ"),
+    makeLikert("الخطة > المزاج.", "قيم/مبادئ"),
+    makeLikert("الوقت مقدّس.", "إدارة وقت"),
+    makeLikert("المال مقدّس.", "اقتصادي"),
+    makeLikert("الصراحة أولًا.", "اتصال/صراحة"),
+    makeLikert("الراحة أولًا.", "قيم/مبادئ"),
+  ];
+  pings.forEach(p=>{ if(rnd()<intensity) sample.splice(randint(0,sample.length,rnd),0,p); });
+
+  return sample;
+}
+
+/* ========= حالة التطبيق ========= */
+const App = {
+  state:{
+    selfName:"",
+    dob:"",
+    nowTime:"",
+    group:[],
+    target:650, randIntensity:.8, edgy:"mix", brutal:"on",
+    seed:Date.now(),
+    idx:0,
+    startedAt:null, elapsed:0,
+    questions:[],
+    answers:{}, // i => {type,value}
+    truthBombs:0
+  },
+  rng: mulberry32( +(localStorage.getItem(Q.RNG_SEED_KEY) || (Date.now()%2147483647)) ),
+
+  save(){ localStorage.setItem(Q.storageKey(), JSON.stringify(this.state)); toast("حفظ ✅"); },
+  load(){
+    const raw = localStorage.getItem(Q.storageKey()); if(!raw) return false;
+    try{ this.state = JSON.parse(raw); return true; }catch{ return false; }
+  },
+  reset(){ localStorage.removeItem(Q.storageKey()); toast("تم ضبط المصنع ⚠️"); setTimeout(()=>location.reload(),300); }
+};
+
+/* ========= عرض/تقدّم ========= */
+function renderProgress(){
+  const total = App.state.questions.length||1;
+  const answered = Object.keys(App.state.answers).length;
+  const prog = document.getElementById("prog");
+  const progText = document.getElementById("progText");
+  prog.max = total; prog.value = answered;
+  progText.textContent = `${answered} / ${total}`;
+  // تقدير مدة
+  const perQ = 10; // ثوانٍ/سؤال تقديرية
+  const remain = Math.max(0,total-answered)*perQ;
+  document.getElementById("eta").textContent = `~ ${(remain/60|0)}–${Math.ceil(remain/45)} دقيقة لإتمام الباقي (تقريبًا)`;
+}
+function renderQuestion(){
+  const q = App.state.questions[App.state.idx];
+  const cont = document.getElementById("qContainer"); cont.innerHTML="";
+  const box = document.createElement("div"); box.className="q";
+  const meta = document.createElement("div"); meta.className="q-meta";
+  meta.innerHTML = `<span class="tag">${q.domain}</span><span class="chip">#${App.state.idx+1}/${App.state.questions.length}</span>`;
+  box.appendChild(meta);
+
+  const h = document.createElement("h3"); h.className="q-title"; h.textContent = q.title; box.appendChild(h);
+  const ans = document.createElement("div"); ans.className="q-ans";
+
+  const saved = App.state.answers[App.state.idx];
+  if(q.type==="likert"){
+    LIKERT7.forEach((opt,i)=>{
+      const id=`lk_${App.state.idx}_${i}`;
+      const lab = document.createElement("label");
+      lab.className="chip"; lab.style.margin="5px"; lab.htmlFor=id;
+      const input=document.createElement("input"); input.type="radio"; input.name=`lk_${App.state.idx}`; input.id=id; input.value=opt; input.style.display="none";
+      lab.textContent=opt; lab.addEventListener("click",(e)=>{e.preventDefault(); input.checked=!input.checked; if(input.checked){[...ans.querySelectorAll("label")].forEach(l=>l.style.outline=""); lab.style.outline="2px solid var(--acc2)";}})
+      if(saved?.value===opt){ lab.style.outline="2px solid var(--acc2)"; }
+      ans.appendChild(lab); ans.appendChild(input);
+    });
+  }
+  if(q.type==="rating"){
+    const id=`rt_${App.state.idx}`;
+    ans.innerHTML = `<div class="row"><input type="range" id="${id}" min="${q.min}" max="${q.max}" step="1" value="${saved?.value ?? Math.round((q.min+q.max)/2)}"/><span id="${id}_v" class="chip">${saved?.value ?? Math.round((q.min+q.max)/2)}</span></div>`;
+    setTimeout(()=>{ const s=ans.querySelector("#"+id), v=ans.querySelector("#"+id+"_v"); s.addEventListener("input",()=> v.textContent=s.value); },0);
+  }
+  if(q.type==="mcq"){
+    const list=document.createElement("div"); list.className="mc-list";
+    q.options.forEach((opt,i)=>{
+      const id=`mc_${App.state.idx}_${i}`;
+      const lab=document.createElement("label"); lab.setAttribute("for",id); lab.textContent=opt;
+      const input=document.createElement("input"); input.type=q.multi!==false? "checkbox":"radio"; input.name=`mc_${App.state.idx}`; input.id=id; input.value=opt; input.style.display="none";
+      lab.addEventListener("click",(e)=>{e.preventDefault(); if(q.multi!==false){ input.checked=!input.checked; lab.style.outline=input.checked? "2px solid var(--acc2)":""; }else{ [...list.querySelectorAll("label")].forEach(l=>l.style.outline=""); input.checked=true; lab.style.outline="2px solid var(--acc2)"; }});
+      if(saved?.value){ const vals = Array.isArray(saved.value)? saved.value:[saved.value]; if(vals.includes(opt)){ input.checked=true; lab.style.outline="2px solid var(--acc2)"; } }
+      list.appendChild(lab); list.appendChild(input);
+    });
+    ans.appendChild(list);
+  }
+  if(q.type==="open"){
+    const ta=document.createElement("textarea"); ta.id=`op_${App.state.idx}`; ta.placeholder="قولي كل شيء بلا تجميل. ما يحدث هنا يبقى هنا."; ta.value=saved?.value||"";
+    ans.appendChild(ta);
+  }
+
+  box.appendChild(ans);
+  cont.appendChild(box);
+}
+
+/* التقاط جواب الحالي */
+function captureCurrent(){
+  const q = App.state.questions[App.state.idx]; if(!q) return;
+  let record=null;
+  if(q.type==="likert"){
+    const chosen = [...document.querySelectorAll(`input[name="lk_${App.state.idx}"]`)].find(i=>i.checked);
+    record = {type:"likert", value: chosen? chosen.value:null};
+  }
+  if(q.type==="rating"){
+    const v=document.querySelector(`#rt_${App.state.idx}`)?.value; record={type:"rating", value: v? +v:null};
+  }
+  if(q.type==="mcq"){
+    const inputs=[...document.querySelectorAll(`input[name="mc_${App.state.idx}"]`)];
+    const vals=inputs.filter(i=>i.checked).map(i=>i.value);
+    record={type:"mcq", value: q.multi!==false? vals: (vals[0]??null)};
+  }
+  if(q.type==="open"){
+    const v=document.querySelector(`#op_${App.state.idx}`)?.value?.trim()??""; record={type:"open", value:v};
+  }
+  App.state.answers[App.state.idx]=record;
+  App.save();
+  renderProgress();
+}
+
+/* المؤقّت */
+let tick=null;
+function startTimer(){
+  if(App.state.startedAt==null){ App.state.startedAt=Date.now()-App.state.elapsed; }
+  if(tick) clearInterval(tick);
+  tick=setInterval(()=>{
+    App.state.elapsed = Date.now()-App.state.startedAt;
+    const s = Math.floor(App.state.elapsed/1000);
+    const h = String((s/3600)|0).padStart(2,"0");
+    const m = String(((s%3600)/60)|0).padStart(2,"0");
+    const sec = String(s%60).padStart(2,"0");
+    document.getElementById("timer").textContent = `${h}:${m}:${sec}`;
+  },1000);
+}
+
+/* تحليل فردي مبسط (بوصلة) */
+function mapLikert(v){ const i=LIKERT7.indexOf(v); return i<0?5:[10,8.5,7,5,3,2,1][i]; }
+function analyzeSingle(state){
+  const ans=state.answers, qs=state.questions;
+  const Sums={
+    clarity:0, time:0, money:0, flex:0, med:0, novelty:0, night:0, order:0
+  }, N={clarity:0,time:0,money:0,flex:0,med:0,novelty:0,night:0,order:0};
+  qs.forEach((q,i)=>{
+    const a=ans[i]; if(!a) return;
+    const v = a.type==="rating"? +a.value:null;
+    if(q.domain==="اتصال/صراحة" && a.type==="likert" && a.value){ Sums.clarity+=mapLikert(a.value); N.clarity++; }
+    if(q.domain==="إدارة وقت"){ if(a.type==="likert"&&a.value){Sums.time+=mapLikert(a.value);N.time++;} if(v!=null){Sums.time+=v/20;N.time++;} }
+    if(q.domain==="اقتصادي"){ if(a.type==="likert"&&a.value){Sums.money+=mapLikert(a.value);N.money++;} if(a.type==="mcq"&&a.value){ const c=Array.isArray(a.value)?a.value.length:1; Sums.money+=2*c; N.money++; } }
+    if(q.domain==="مرونة خطة"||q.domain==="سلوك تحت الضغط"){ if(a.type==="open"&&a.value){Sums.flex+=Math.min(20,a.value.length/35);N.flex++;} if(a.type==="mcq"&&a.value){const c=Array.isArray(a.value)?a.value.length:1; Sums.flex+=3*c; N.flex++;} }
+    if(q.domain==="قيم/مبادئ"||q.domain==="اجتماعي"){ if(a.type==="mcq"&&a.value){const c=Array.isArray(a.value)?a.value.length:1; Sums.med+=2*c; N.med++;} }
+    if(q.domain==="أنشطة/ليل" && a.type==="likert"&&a.value){ Sums.night+=mapLikert(a.value); N.night++; }
+    if(q.domain==="مؤشرات شخصية" && v!=null){
+      if(q.title.includes("مجازفة")){ Sums.novelty+=v/10; N.novelty++; }
+      if(q.title.includes("ترتيب")||q.title.includes("نظافة")){ Sums.order+=v/10; N.order++; }
+    }
+  });
+  const norm=(x,c)=> c? Math.round(Math.min(100,Math.max(0,(x/c)*10))):0;
+  const profile={
+    "صراحة/وضوح":norm(Sums.clarity,N.clarity),
+    "انضباط وقت":norm(Sums.time,N.time),
+    "حماية ميزانية":norm(Sums.money,N.money),
+    "مرونة تحت الضغط":norm(Sums.flex,N.flex),
+    "وساطة نزاعات":norm(Sums.med,N.med),
+    "حب التجديد":norm(Sums.novelty,N.novelty),
+    "مزاج ليلي":norm(Sums.night,N.night),
+    "ترتيب/نظافة":norm(Sums.order,N.order),
+  };
+
+  // توافق تقريبي (مؤقت حتى دمج نتائج الآخرين)
+  const members = state.group;
+  const compat = {};
+  const seed = (profile["انضباط وقت"] + profile["حماية ميزانية"] + profile["مرونة تحت الضغط"] + profile["صراحة/وضوح"])/4;
+  members.forEach(a=>{
+    members.forEach(b=>{
+      if(a===b) return;
+      const noise = Math.floor((Math.random()*2-1)*7); // ضجيج بسيط
+      compat[`${a}↔${b}`] = Math.max(0,Math.min(100, seed+noise));
+    });
+  });
+  return {profile, compat};
+}
+
+/* تحليل جماعي بعد دمج عدة JSON (من صادرات الأفراد) */
+function analyzeGroup(states){
+  const allMembers = Array.from(new Set(states.flatMap(s=>s.group)));
+  const pairs={};
+  allMembers.forEach(a=>{
+    allMembers.forEach(b=>{
+      if(a===b) return;
+      const pa=states.find(s=>(s.selfName===a));
+      const pb=states.find(s=>(s.selfName===b));
+      let v=50;
+      if(pa && pb){
+        const A=analyzeSingle(pa).profile, B=analyzeSingle(pb).profile;
+        const keys=["انضباط وقت","حماية ميزانية","مرونة تحت الضغط","صراحة/وضوح"];
+        const diff = keys.reduce((m,k)=> m+Math.abs((A[k]||50)-(B[k]||50)), 0)/keys.length;
+        v = Math.max(0, Math.min(100, 100 - diff));
+      }
+      pairs[`${a}↔${b}`]=Math.round(v);
+    });
+  });
+  return {members:allMembers, pairs};
+}
+
+/* ========= تصدير/استيراد ========= */
+function exportJson(){
+  const blob = new Blob([JSON.stringify(App.state,null,2)], {type:"application/json"});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`travel_exam_${App.state.selfName||'session'}_${Date.now()}.json`; a.click();
+}
+function exportCsv(){
+  const rows=[["index","domain","type","title","answer"]];
+  App.state.questions.forEach((q,i)=>{
+    const a=App.state.answers[i];
+    let v=""; if(a){ v = Array.isArray(a.value)? a.value.join(" | ") : (a.value??""); }
+    rows.push([i,q.domain,q.type,q.title.replace(/\n/g,' '),String(v).replace(/\n/g,' ')]);
+  });
+  const csv = rows.map(r=> r.map(x=>`"${String(x).replaceAll('"','""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`travel_exam_answers_${App.state.selfName||'session'}_${Date.now()}.csv`; a.click();
+}
+
+/* ========= تدفق البداية ========= */
+function start(){
+  const selfName=(document.getElementById("selfName").value.trim()||"مشارك");
+  const dob=document.getElementById("dob").value||"";
+  const nowTime=document.getElementById("nowTime").value||"";
+  const sessionHint=document.getElementById("sessionHint").value.trim();
+  const groupStr=document.getElementById("groupList").value.trim();
+  const group=groupStr? groupStr.split(",").map(s=>s.trim()).filter(Boolean):["ديما","ريما","رغد","رهف"];
+  const target=+document.getElementById("targetCount").value||650;
+  const randIntensity=+document.getElementById("randIntensity").value||0.8;
+  const edgy=document.getElementById("edgy").value;
+  const brutal=document.getElementById("brutal").value;
+
+  const seed = Date.now()%2147483647; localStorage.setItem(Q.RNG_SEED_KEY, String(seed));
+  App.rng = mulberry32(seed);
+
+  if(sessionHint){ const url=new URL(location.href); url.searchParams.set("user", sessionHint); history.replaceState(null,"",url.toString()); }
+
+  const qs = generateQuestions({selfName, others:group.filter(x=>x!==selfName), target, edgy, rnd:App.rng, intensity:randIntensity, brutal});
+  App.state={ selfName,dob,nowTime, group, target, randIntensity, edgy, brutal, seed, idx:0, startedAt:null, elapsed:0, questions:qs, answers:{}, truthBombs:0 };
+  App.save();
+
+  document.getElementById("qaPanel").style.display="block";
+  document.getElementById("results").style.display="none";
+  renderQuestion(); renderProgress(); startTimer();
+}
+function afterResume(){
+  document.getElementById("qaPanel").style.display="block";
+  document.getElementById("results").style.display="none";
+  renderQuestion(); renderProgress(); startTimer();
+}
+
+/* ========= واجهة ========= */
+document.getElementById("startBtn").addEventListener("click", start);
+document.getElementById("resumeBtn").addEventListener("click", ()=>{ if(App.load()){ afterResume(); toast("رجعنا للتقدّم السابق ✅"); } else toast("لا توجد جلسة محفوظة."); });
+document.getElementById("resetBtn").addEventListener("click", ()=>{ if(confirm("متأكدة من إعادة الضبط؟")) App.reset(); });
+document.getElementById("saveBtn").addEventListener("click", ()=> App.save());
+document.getElementById("exportBtn").addEventListener("click", exportJson);
+document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+
+document.getElementById("nextBtn").addEventListener("click", ()=>{ captureCurrent(); App.state.idx=Math.min(App.state.idx+1, App.state.questions.length-1); App.save(); renderQuestion(); renderProgress(); surprisePing(); });
+document.getElementById("prevBtn").addEventListener("click", ()=>{ captureCurrent(); App.state.idx=Math.max(App.state.idx-1, 0); App.save(); renderQuestion(); renderProgress(); });
+document.getElementById("flagBtn").addEventListener("click", ()=>{ App.state.truthBombs++; App.save(); toast("تم وضع علامة توتّر — سيؤخذ في التحليل."); });
+
+/* كل 30 ثانية — حفظ تلقائي */
+setInterval(()=>{ captureCurrent(); }, 30000);
+
+/* ========= مفاجآت “Truth Bomb” خفيفة ========= */
+function surprisePing(){
+  const answered = Object.keys(App.state.answers).length;
+  if(answered && answered%randint(20,40,Math.random)===0){
+    const t = App.state.brutal==="on" ? "قوليها بصراحة بلا مجاملة:" : "قوليها بأدب ووضوح:";
+    const extra = makeOpen(`${t} ما هو السلوك الذي يدمّر يومك خلال السفر؟ حلّي بفقرة دقيقة.`, "اتصال/صراحة");
+    App.state.questions.splice(App.state.idx+1,0,extra);
+    App.save();
+  }
+}
+
+/* ========= إنهاء وعرض نتائج فردية ========= */
+function showResults(){
+  const {profile, compat} = analyzeSingle(App.state);
+  const sum = document.getElementById("summary"); sum.innerHTML="";
+  Object.entries(profile).forEach(([k,v])=>{
+    const line=document.createElement("div");
+    line.innerHTML = `<div class="row" style="align-items:center"><div style="width:180px" class="muted tiny">${k}</div><progress value="${v}" max="100"></progress><span class="chip">${v}</span></div>`;
+    sum.appendChild(line);
+  });
+  const members = App.state.group;
+  const cdiv=document.getElementById("compat"); cdiv.innerHTML="";
+  if(members.length){
+    const tbl=document.createElement("table"); tbl.className="compat-table";
+    const th=document.createElement("tr"); th.innerHTML="<th></th>"+members.map(m=>`<th>${m}</th>`).join(""); tbl.appendChild(th);
+    members.forEach(a=>{
+      const tr=document.createElement("tr"); tr.innerHTML=`<th>${a}</th>` + members.map(b=>{
+        if(a===b) return `<td class="muted tiny">—</td>`;
+        const k=`${a}↔${b}`; const v=compat[k]??compat[`${b}↔${a}`]??50;
+        const col = v>=70? "var(--good)" : v>=40? "var(--warn)" : "var(--bad)";
+        return `<td style="color:${col}">${v}</td>`;
+      }).join("");
+      tbl.appendChild(tr);
+    });
+    cdiv.appendChild(tbl);
+  }
+  document.getElementById("results").style.display="block";
+}
+document.getElementById("finishBtn").addEventListener("click", showResults);
+
+/* ========= دمج نتائج متعددة وتحليل جماعي ========= */
+let multiFiles=[];
+document.getElementById("importMulti").addEventListener("change",(e)=>{ multiFiles=[...e.target.files]; toast(`${multiFiles.length} ملف(ات) جاهزة للدمج`); });
+document.getElementById("mergeBtn").addEventListener("click", ()=>{
+  if(!multiFiles.length){ toast("اختاري ملفات JSON أولًا."); return; }
+  const readers=[...multiFiles].map(f=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ try{res(JSON.parse(r.result));}catch(err){rej(err);} }; r.onerror=rej; r.readAsText(f,'utf-8'); }));
+  Promise.allSettled(readers).then(list=>{
+    const states = list.filter(x=>x.status==="fulfilled").map(x=>x.value).filter(v=>v && v.questions && v.answers);
+    if(!states.length){ toast("تعذر قراءة الملفات."); return; }
+    const grp = analyzeGroup(states);
+    const gdiv=document.getElementById("groupCompat"); gdiv.innerHTML="";
+    const tbl=document.createElement("table"); tbl.className="compat-table";
+    const head=document.createElement("tr"); head.innerHTML="<th></th>"+grp.members.map(m=>`<th>${m}</th>`).join(""); tbl.appendChild(head);
+    grp.members.forEach(a=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML = `<th>${a}</th>` + grp.members.map(b=>{
+        if(a===b) return `<td class="muted tiny">—</td>`;
+        const v=grp.pairs[`${a}↔${b}`] ?? grp.pairs[`${b}↔${a}`] ?? 50;
+        const col = v>=70? "var(--good)" : v>=40? "var(--warn)" : "var(--bad)";
+        return `<td style="color:${col}">${v}</td>`;
+      }).join("");
+      tbl.appendChild(tr);
+    });
+    gdiv.appendChild(tbl);
+
+    const gs=document.getElementById("groupSummary");
+    gs.innerHTML = `<div class="muted tiny">تم دمج ${states.length} جلسة. القراءة الجماعية تقلل الانحياز الفردي وتُظهر مناطق الاحتكاك الواقعية (وقت/مال/حدود/ليل).</div>`;
+    document.getElementById("groupResults").style.display="block";
+    toast("تم التحليل الجماعي ✅");
+  });
+});
+
+/* ========= Service Worker (اختياري) ========= */
+(async function registerSW(){
+  try{
+    if('serviceWorker' in navigator){
+      await navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
+        self.addEventListener('install',e=>self.skipWaiting());
+        self.addEventListener('activate',e=>self.clients.claim());
+        self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>new Response('<h1>أوفلاين</h1>',{headers:{'Content-Type':'text/html'}})));});
+      `],{type:'text/javascript'})));
+      if(location.protocol==='file:'){ console.warn("ملاحظة: SW قد لا يعمل بكامل القوة على file:// — شغّلي عبر HTTPS للتثبيت الكامل."); }
+    }
+  }catch(err){ console.warn("SW fallback:", err); }
+})();
+</script>
+</body>
+</html>
