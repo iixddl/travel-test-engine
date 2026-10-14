@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>آلة اختبار السفر — v1.2 (عشوائية/تحليل/توافق/دمج جماعي)</title>
+<title>آلة اختبار السفر — v1.3 (عشوائية/تحليل/توافق/دمج جماعي)</title>
 <meta name="theme-color" content="#0e0f12" />
 <style>
   :root{
@@ -53,10 +53,15 @@
   .compat-table td,.compat-table th{border:1px solid #2c3449; padding:8px; text-align:center}
   .hr{height:1px; background:#263048; margin:8px 0}
   .tag{font-size:11px; background:var(--acc2); color:#140e04; padding:3px 6px; border-radius:999px}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  :focus-visible{outline:3px solid var(--acc2); outline-offset:2px}
+  .mc-list label,.chip[for]{transition:outline-color .15s,background .15s}
+  @media(max-width:560px){.mc-list{grid-template-columns:1fr}.wrap{padding:12px}.btn{flex:1 1 auto}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <a class="sr-only" href="#setup">انتقل إلى الإعدادات</a>
   <header>
     <h1>آلة اختبار السفر — بدون سكر كوتينغ، بلا تبويبات</h1>
     <div class="pill">يحفظ تلقائيًا • يعمل على أي استضافة ساكنة • دمج نتائج المجموعة • رابط جلسة لكل شخص</div>
@@ -173,7 +178,7 @@
   </div>
 
   <!-- الأسئلة -->
-  <section class="card" id="qaPanel" style="margin-top:12px; display:none">
+  <section class="card" id="qaPanel" aria-live="polite" style="margin-top:12px; display:none">
     <h2>الأسئلة (بدون أقسام — عشوائية صافية)</h2>
     <div id="qContainer"></div>
     <div class="row">
@@ -202,10 +207,10 @@
     <div id="groupCompat"></div>
   </section>
 
-  <div class="footer muted">v1.2 • قوالب توليد تصل بسهولة إلى 750+ سؤال • “وقاحة قصوى” غير جنسية/غير دينية • دمج متعدد</div>
+  <div class="footer muted">v1.3 • قوالب توليد تصل بسهولة إلى 750+ سؤال • توافق ثابت قابل لإعادة الإنتاج • دمج متعدد</div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ========= أُسس عامة ========= */
@@ -346,10 +351,26 @@ function generateQuestions({selfName, others, target=650, edgy="mix", rnd, inten
   BASE.foodAxes.forEach(ax => pile.push(makeLikert(`بالنسبة لي: ${ax}.`, "تغذية/قهوة")));
   BASE.activities.forEach(a => pile.push(makeLikert(`أعطي أولوية لـ: ${a}.`, "أنشطة/ليل")));
 
+  // ضمان بلوغ العدد المطلوب حتى مع بنك أساسي صغير: تنويعات حتمية لا تكرر النص حرفيًا
+  const desired = Math.min(Math.max(target, 200), 1200);
+  const fillerSeeds = [
+    ["ما الحد العملي الذي لا أقبل تجاوزه في هذا المحور؟", "حدود شخصية"],
+    ["ما البديل الواقعي إذا فشل الخيار الأول؟", "مرونة خطة"],
+    ["ما الذي يجب قوله مبكرًا كي لا يتحول إلى خلاف؟", "اتصال/صراحة"],
+    ["كيف أوازن بين المتعة والتكلفة دون ضغط على أحد؟", "اقتصادي"],
+    ["ما التصرف الذي يحافظ على كرامة المجموعة تحت الضغط؟", "سلوك تحت الضغط"]
+  ];
+  let fillerIndex=0;
+  while(pile.length < desired){
+    const [title,domain]=fillerSeeds[fillerIndex % fillerSeeds.length];
+    const round=Math.floor(fillerIndex/fillerSeeds.length)+1;
+    pile.push(makeLikert(`${title} (تنويعة ${round})`, domain));
+    fillerIndex++;
+  }
+
   // ترتيب، تشويش، أخذ عيّنة بالحجم المطلوب
   const shuffled = seededShuffle(pile, rnd);
   const jittered = seededShuffle(shuffled, rnd);
-  const desired = Math.min(Math.max(target, 200), 1200);
   let sample = jittered.slice(0, desired);
 
   // حقن “نبضات قصيرة” لكسر إرهاق الأسئلة الطويلة
@@ -363,7 +384,7 @@ function generateQuestions({selfName, others, target=650, edgy="mix", rnd, inten
   ];
   pings.forEach(p=>{ if(rnd()<intensity) sample.splice(randint(0,sample.length,rnd),0,p); });
 
-  return sample;
+  return sample.slice(0, desired);
 }
 
 /* ========= حالة التطبيق ========= */
@@ -383,12 +404,12 @@ const App = {
   },
   rng: mulberry32( +(localStorage.getItem(Q.RNG_SEED_KEY) || (Date.now()%2147483647)) ),
 
-  save(){ localStorage.setItem(Q.storageKey(), JSON.stringify(this.state)); toast("حفظ ✅"); },
+  save({notify=true}={}){ localStorage.setItem(Q.storageKey(), JSON.stringify(this.state)); if(notify) toast("حفظ ✅"); },
   load(){
     const raw = localStorage.getItem(Q.storageKey()); if(!raw) return false;
     try{ this.state = JSON.parse(raw); return true; }catch{ return false; }
   },
-  reset(){ localStorage.removeItem(Q.storageKey()); toast("تم ضبط المصنع ⚠️"); setTimeout(()=>location.reload(),300); }
+  reset(){ if(tick) clearInterval(tick); localStorage.removeItem(Q.storageKey()); toast("تم ضبط المصنع ⚠️"); setTimeout(()=>location.reload(),300); }
 };
 
 /* ========= عرض/تقدّم ========= */
@@ -473,7 +494,7 @@ function captureCurrent(){
     const v=document.querySelector(`#op_${App.state.idx}`)?.value?.trim()??""; record={type:"open", value:v};
   }
   App.state.answers[App.state.idx]=record;
-  App.save();
+  App.save({notify:false});
   renderProgress();
 }
 
@@ -489,11 +510,18 @@ function startTimer(){
     const m = String(((s%3600)/60)|0).padStart(2,"0");
     const sec = String(s%60).padStart(2,"0");
     document.getElementById("timer").textContent = `${h}:${m}:${sec}`;
+    App.save({notify:false});
   },1000);
 }
 
 /* تحليل فردي مبسط (بوصلة) */
 function mapLikert(v){ const i=LIKERT7.indexOf(v); return i<0?5:[10,8.5,7,5,3,2,1][i]; }
+function pairNoise(seed,a,b){
+  const text=`${seed}|${[a,b].sort().join("↔")}`;
+  let h=2166136261;
+  for(let i=0;i<text.length;i++){ h^=text.charCodeAt(i); h=Math.imul(h,16777619); }
+  return (Math.abs(h)%15)-7;
+}
 function analyzeSingle(state){
   const ans=state.answers, qs=state.questions;
   const Sums={
@@ -532,7 +560,7 @@ function analyzeSingle(state){
   members.forEach(a=>{
     members.forEach(b=>{
       if(a===b) return;
-      const noise = Math.floor((Math.random()*2-1)*7); // ضجيج بسيط
+      const noise = pairNoise(state.seed||0,a,b); // ضجيج ثابت لنفس الجلسة والزوج
       compat[`${a}↔${b}`] = Math.max(0,Math.min(100, seed+noise));
     });
   });
@@ -587,7 +615,7 @@ function start(){
   const groupStr=document.getElementById("groupList").value.trim();
   const group=groupStr? groupStr.split(",").map(s=>s.trim()).filter(Boolean):["ديما","ريما","رغد","رهف"];
   const target=+document.getElementById("targetCount").value||650;
-  const randIntensity=+document.getElementById("randIntensity").value||0.8;
+  const randIntensity=Number.isFinite(+document.getElementById("randIntensity").value) ? +document.getElementById("randIntensity").value : 0.8;
   const edgy=document.getElementById("edgy").value;
   const brutal=document.getElementById("brutal").value;
 
@@ -605,6 +633,14 @@ function start(){
   renderQuestion(); renderProgress(); startTimer();
 }
 function afterResume(){
+  document.getElementById("selfName").value=App.state.selfName||"";
+  document.getElementById("dob").value=App.state.dob||"";
+  document.getElementById("nowTime").value=App.state.nowTime||"";
+  document.getElementById("groupList").value=(App.state.group||[]).join(", ");
+  document.getElementById("targetCount").value=App.state.target||650;
+  document.getElementById("randIntensity").value=App.state.randIntensity ?? .8;
+  document.getElementById("edgy").value=App.state.edgy||"mix";
+  document.getElementById("brutal").value=App.state.brutal||"on";
   document.getElementById("qaPanel").style.display="block";
   document.getElementById("results").style.display="none";
   renderQuestion(); renderProgress(); startTimer();
@@ -638,6 +674,7 @@ function surprisePing(){
 
 /* ========= إنهاء وعرض نتائج فردية ========= */
 function showResults(){
+  captureCurrent();
   const {profile, compat} = analyzeSingle(App.state);
   const sum = document.getElementById("summary"); sum.innerHTML="";
   Object.entries(profile).forEach(([k,v])=>{
@@ -672,7 +709,10 @@ document.getElementById("mergeBtn").addEventListener("click", ()=>{
   if(!multiFiles.length){ toast("اختاري ملفات JSON أولًا."); return; }
   const readers=[...multiFiles].map(f=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ try{res(JSON.parse(r.result));}catch(err){rej(err);} }; r.onerror=rej; r.readAsText(f,'utf-8'); }));
   Promise.allSettled(readers).then(list=>{
-    const states = list.filter(x=>x.status==="fulfilled").map(x=>x.value).filter(v=>v && v.questions && v.answers);
+    const states = list.filter(x=>x.status==="fulfilled").map(x=>x.value).filter(v=>
+      v && typeof v.selfName==="string" && Array.isArray(v.group) && Array.isArray(v.questions) &&
+      v.answers && typeof v.answers==="object" && v.questions.length<=5000
+    );
     if(!states.length){ toast("تعذر قراءة الملفات."); return; }
     const grp = analyzeGroup(states);
     const gdiv=document.getElementById("groupCompat"); gdiv.innerHTML="";
