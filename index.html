@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>آلة اختبار السفر — v1.3 (عشوائية/تحليل/توافق/دمج جماعي)</title>
+<title>آلة اختبار السفر — v1.4 (عشوائية/تحليل/توافق/دمج جماعي)</title>
 <meta name="theme-color" content="#0e0f12" />
 <style>
   :root{
@@ -207,7 +207,7 @@
     <div id="groupCompat"></div>
   </section>
 
-  <div class="footer muted">v1.3 • قوالب توليد تصل بسهولة إلى 750+ سؤال • توافق ثابت قابل لإعادة الإنتاج • دمج متعدد</div>
+  <div class="footer muted">v1.4 • قوالب توليد تصل بسهولة إلى 1200 سؤال • توافق ثابت • حفظ واستئناف ودمج متعدد</div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -614,8 +614,10 @@ function start(){
   const sessionHint=document.getElementById("sessionHint").value.trim();
   const groupStr=document.getElementById("groupList").value.trim();
   const group=groupStr? groupStr.split(",").map(s=>s.trim()).filter(Boolean):["ديما","ريما","رغد","رهف"];
-  const target=+document.getElementById("targetCount").value||650;
-  const randIntensity=Number.isFinite(+document.getElementById("randIntensity").value) ? +document.getElementById("randIntensity").value : 0.8;
+  const rawTarget=+document.getElementById("targetCount").value;
+  const target=Number.isFinite(rawTarget) ? Math.min(1200,Math.max(200,Math.round(rawTarget))) : 650;
+  const rawIntensity=+document.getElementById("randIntensity").value;
+  const randIntensity=Number.isFinite(rawIntensity) ? Math.min(1,Math.max(0,rawIntensity)) : 0.8;
   const edgy=document.getElementById("edgy").value;
   const brutal=document.getElementById("brutal").value;
 
@@ -675,8 +677,15 @@ function surprisePing(){
 /* ========= إنهاء وعرض نتائج فردية ========= */
 function showResults(){
   captureCurrent();
+  if(tick){ clearInterval(tick); tick=null; }
+  App.state.completedAt = Date.now();
+  App.save({notify:false});
   const {profile, compat} = analyzeSingle(App.state);
   const sum = document.getElementById("summary"); sum.innerHTML="";
+  const answered=Object.keys(App.state.answers).filter(i=>App.state.answers[i]?.value!==null && App.state.answers[i]?.value!=="").length;
+  const elapsedSeconds=Math.floor((App.state.elapsed||0)/1000);
+  const elapsedLabel=`${String((elapsedSeconds/3600)|0).padStart(2,"0")}:${String(((elapsedSeconds%3600)/60)|0).padStart(2,"0")}:${String(elapsedSeconds%60).padStart(2,"0")}`;
+  sum.innerHTML=`<div class="pill" style="margin-bottom:10px">أُجيب عن ${answered} من ${App.state.questions.length} سؤال • الزمن ${elapsedLabel} • علامات التوتّر ${App.state.truthBombs||0}</div>`;
   Object.entries(profile).forEach(([k,v])=>{
     const line=document.createElement("div");
     line.innerHTML = `<div class="row" style="align-items:center"><div style="width:180px" class="muted tiny">${k}</div><progress value="${v}" max="100"></progress><span class="chip">${v}</span></div>`;
